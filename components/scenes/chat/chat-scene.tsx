@@ -202,7 +202,10 @@ export function ChatScene() {
         <div className="mx-auto flex max-w-md flex-col gap-1.5">
           <div className="mx-auto mb-2 rounded-md bg-[#FFF5C4] px-3 py-1.5 text-center shadow-sm">
             <p className="text-[12px] text-[#54656f]">
-              🔒 Los mensajes están cifrados de extremo a extremo
+              🔒 Los mensajes y las llamadas están cifrados de extremo a
+              extremo. Solo las personas en este chat pueden leerlos,
+              escucharlos o compartirlos. Haz clic para obtener más
+              información.
             </p>
           </div>
 
