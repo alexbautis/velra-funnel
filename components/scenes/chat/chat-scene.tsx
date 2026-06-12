@@ -277,14 +277,14 @@ export function ChatScene() {
 
       {/* Barra de entrada iOS (decorativa: la clienta nunca escribe):
           "+", campo vacío con icono de sticker, cámara y micrófono fuera */}
-      <div className="flex items-center gap-4 bg-[#F6F6F6] px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
-        <Plus className="h-7 w-7 shrink-0 text-black" strokeWidth={1.8} />
-        <div className="flex flex-1 items-center rounded-full border border-[#D1D1D6] bg-white py-2 pl-4 pr-2.5">
+      <div className="flex items-center gap-[18px] bg-[#F6F6F6] px-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-2.5">
+        <Plus className="h-8 w-8 shrink-0 text-black" strokeWidth={2} />
+        <div className="flex min-h-[42px] flex-1 items-center rounded-full border border-[#E0E0E2] bg-white py-1.5 pl-4 pr-3 shadow-[0_1px_1px_rgba(0,0,0,0.04)]">
           <span className="flex-1 font-dm text-[16px]">&nbsp;</span>
-          <Sticker className="h-6 w-6 shrink-0 text-[#8E8E93]" />
+          <Sticker className="h-[26px] w-[26px] shrink-0 text-[#5F6368]" strokeWidth={1.7} />
         </div>
-        <Camera className="h-[26px] w-[26px] shrink-0 text-black" strokeWidth={1.8} />
-        <Mic className="h-6 w-6 shrink-0 text-black" strokeWidth={1.8} />
+        <Camera className="h-7 w-7 shrink-0 text-black" strokeWidth={2} />
+        <Mic className="h-[26px] w-[26px] shrink-0 text-black" strokeWidth={2} />
       </div>
 
       <VideoOverlay
