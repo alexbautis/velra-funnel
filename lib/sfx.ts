@@ -9,25 +9,35 @@ const registry = new Set<HTMLAudioElement>();
 let unlockInstalled = false;
 let unlocked = false;
 
+function tryUnlock(audio: HTMLAudioElement) {
+  if (!audio.paused) return;
+  const p = audio.play();
+  if (p)
+    p.then(() => {
+      audio.pause();
+      audio.currentTime = 0;
+    }).catch(() => {});
+}
+
 function installUnlockListener() {
   if (unlockInstalled || typeof document === "undefined") return;
   unlockInstalled = true;
   const unlock = () => {
     unlocked = true;
-    registry.forEach((audio) => {
-      // Solo desbloquear los que no están sonando ya
-      if (!audio.paused) return;
-      const p = audio.play();
-      if (p) {
-        p.then(() => {
-          audio.pause();
-          audio.currentTime = 0;
-        }).catch(() => {});
-      }
-    });
+    registry.forEach(tryUnlock);
     document.removeEventListener("pointerdown", unlock);
   };
   document.addEventListener("pointerdown", unlock, { passive: true });
+}
+
+/**
+ * Llama desde un tap handler para pre-activar todos los elementos
+ * registrados. Útil para garantizar el unlock en iOS cuando el tap
+ * que inicia la sesión ocurre antes de que los SFX sean creados.
+ */
+export function preUnlockAll() {
+  unlocked = true;
+  registry.forEach(tryUnlock);
 }
 
 export interface Sfx {
@@ -52,6 +62,8 @@ export function createSfx(
   audio.preload = "auto";
   registry.add(audio);
   installUnlockListener();
+  // Si el usuario ya tapó antes de que se creara este elemento, activarlo ya
+  if (unlocked) tryUnlock(audio);
 
   return {
     element: audio,
