@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --teal: #36cfc3;
+  --blush: #f2c4b2;
+  --ink: #0a0a0a;
+  --ink-soft: #141414;
+}
+
+html,
+body {
+  height: 100%;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-dm), sans-serif;
+  background: var(--ink);
+  color: #ffffff;
+}
+
+/* Patrón de fondo del chat estilo WhatsApp (doodle sutil) */
+.wa-chat-bg {
+  background-color: #ece5dd;
+  background-image: radial-gradient(
+      circle at 25% 25%,
+      rgba(0, 0, 0, 0.025) 1.5px,
+      transparent 1.5px
+    ),
+    radial-gradient(
+      circle at 75% 75%,
+      rgba(0, 0, 0, 0.02) 1px,
+      transparent 1px
+    );
+  background-size: 48px 48px;
+}
+
+/* Cola de burbuja entrante de WhatsApp */
+.wa-tail-in {
+  position: relative;
+}
+.wa-tail-in::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -8px;
+  width: 0;
+  height: 0;
+  border-top: 10px solid #ffffff;
+  border-left: 10px solid transparent;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
