@@ -15,7 +15,7 @@ import {
 import { track } from "@/lib/tracking";
 import { useFunnel } from "@/lib/funnel-state";
 import { ASSETS } from "@/lib/assets";
-import { playSfx, unlockAudioSession } from "@/lib/sfx";
+import { playSfx, unlockAudioSession, type SfxHandle } from "@/lib/sfx";
 import { DraAvatar } from "@/components/dra-avatar";
 import { DRA } from "@/content/chat-script";
 
@@ -70,6 +70,12 @@ export function LlamadaScene() {
   const [elapsed, setElapsed] = useState(0);
   const [finalDuration, setFinalDuration] = useState(0);
   const [now, setNow] = useState<Date | null>(null);
+  // En iPhone/iPad la status bar real ya muestra hora/batería: ocultar la fake
+  const [isIosDevice] = useState(
+    () =>
+      typeof navigator !== "undefined" &&
+      /iPhone|iPad/i.test(navigator.userAgent)
+  );
   const [waveformBars, setWaveformBars] = useState<number[]>(
     Array(BAR_COUNT).fill(2)
   );
@@ -135,11 +141,18 @@ export function LlamadaScene() {
   }, []);
 
   // Tono de llamada: existe SOLO mientras el estado es "ringing".
-  // Se instancia al entrar y se libera al salir (contestar o fallback).
+  // El handle vive en un ref para poder cortarlo SÍNCRONAMENTE dentro
+  // del tap de Contestar (iOS): el cleanup del effect llega unos ms
+  // después y en iPhone el tono se solapaba con la voz de la Dra.
+  const ringHandleRef = useRef<SfxHandle | null>(null);
   useEffect(() => {
     if (state !== "ringing") return;
     const ring = playSfx(ASSETS.sfx_tono_llamada, { loop: true, volume: 0.5 });
-    return () => ring.stop();
+    ringHandleRef.current = ring;
+    return () => {
+      ring.stop();
+      if (ringHandleRef.current === ring) ringHandleRef.current = null;
+    };
   }, [state]);
 
   const handleIntroEnded = useCallback(() => {
@@ -211,10 +224,14 @@ export function LlamadaScene() {
   // ---- Estado B → C (tap = desbloqueo de audio iOS) -----------------------
   const handleAnswer = () => {
     if (stateRef.current !== "ringing") return;
+    // Corte SÍNCRONO del tono dentro del tap, antes de cambiar de estado
+    // (iOS): no esperar al cleanup asíncrono del effect
+    ringHandleRef.current?.stop();
+    ringHandleRef.current = null;
     // Último gesto antes de la notificación: re-resume del AudioContext y
     // asegurar que notif + mensaje están decodificados en memoria (iOS)
     unlockAudioSession([ASSETS.sfx_notif_whatsapp, ASSETS.sfx_mensaje_whatsapp]);
-    track("exp2_answer"); // el tono se detiene solo: cleanup del effect de "ringing"
+    track("exp2_answer");
     setState("active");
 
     const audio = audioRef.current;
@@ -487,34 +504,36 @@ export function LlamadaScene() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
           >
-            {/* Fondo: misma imagen de la consulta + overlay 50% */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={ASSETS.bg_llamada_entrante}
-              alt=""
-              aria-hidden
-              className="absolute inset-0 h-full w-full object-cover"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = "none";
+            {/* Fondo genérico estilo iPhone: degradado oscuro limpio */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background: "linear-gradient(to bottom, #0A0A0A, #1A1A1A)",
               }}
             />
-            <div className="absolute inset-0 bg-black/50" />
 
             <div className="relative z-10 flex h-full flex-col">
-              {/* Status bar */}
-              <div className="flex items-center justify-between px-6 pt-[max(0.75rem,env(safe-area-inset-top))] text-white/80">
-                <span
-                  className="text-[15px] font-semibold"
-                  style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
-                >
-                  {now ? deviceClock(now) : ""}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Signal className="h-4 w-4" strokeWidth={2.5} />
-                  <Wifi className="h-4 w-4" strokeWidth={2.5} />
-                  <BatteryFull className="h-5 w-5" strokeWidth={2} />
-                </span>
-              </div>
+              {/* Status bar fake: solo fuera de iPhone/iPad (allí la real
+                  ya muestra hora y batería y se duplicaría) */}
+              {!isIosDevice ? (
+                <div className="flex items-center justify-between px-6 pt-[max(0.75rem,env(safe-area-inset-top))] text-white/80">
+                  <span
+                    className="text-[15px] font-semibold"
+                    style={{
+                      fontFamily: "system-ui, -apple-system, sans-serif",
+                    }}
+                  >
+                    {now ? deviceClock(now) : ""}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Signal className="h-4 w-4" strokeWidth={2.5} />
+                    <Wifi className="h-4 w-4" strokeWidth={2.5} />
+                    <BatteryFull className="h-5 w-5" strokeWidth={2} />
+                  </span>
+                </div>
+              ) : (
+                <div className="pt-[max(0.75rem,env(safe-area-inset-top))]" />
+              )}
 
               {/* Candado */}
               <div className="mt-3 flex justify-center">

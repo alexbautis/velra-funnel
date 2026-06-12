@@ -157,6 +157,11 @@ export function playSfx(
       return {
         stop() {
           try {
+            gain.gain.value = 0; // silencio inmediato aunque stop() falle
+          } catch {
+            /* noop */
+          }
+          try {
             node.stop();
           } catch {
             /* ya parado */
@@ -178,12 +183,21 @@ export function playSfx(
   prefetchSfx(src);
 
   let audio: HTMLAudioElement | null = null;
+  let stopped = false;
   try {
     audio = new Audio(src);
     audio.loop = loop;
     audio.volume = volume; // iOS lo ignora; Android sí lo aplica
     const p = audio.play();
-    if (p) p.catch(() => {});
+    if (p)
+      p.then(() => {
+        // Carrera iOS: si stop() llegó mientras play() estaba pendiente,
+        // la promesa resuelve después y el audio seguiría sonando. Rematar.
+        if (stopped && audio) {
+          audio.pause();
+          audio.src = "";
+        }
+      }).catch(() => {});
     if (!loop) {
       audio.onended = () => {
         if (audio) audio.src = "";
@@ -194,11 +208,11 @@ export function playSfx(
   }
   return {
     stop() {
+      stopped = true;
       try {
         if (audio) {
           audio.pause();
           audio.src = "";
-          audio = null;
         }
       } catch {
         /* noop */
