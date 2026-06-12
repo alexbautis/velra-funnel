@@ -28,7 +28,13 @@ export default function LandingPage() {
   }, [captureUtms]);
 
   const handleEnter = () => {
-    unlockAudioSession(); // WAV mudo dentro del tap: desbloquea audio iOS sin sonar nada
+    // Desbloquea AudioContext + media elements (nada audible) y pre-decodifica
+    // los 3 SFX en memoria: iOS los podrá sonar luego sin gesto (Web Audio)
+    unlockAudioSession([
+      ASSETS.sfx_tono_llamada,
+      ASSETS.sfx_notif_whatsapp,
+      ASSETS.sfx_mensaje_whatsapp,
+    ]);
     track("landing_enter");
     markSceneReached("llamada");
     router.push("/llamada");

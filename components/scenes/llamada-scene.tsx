@@ -153,6 +153,9 @@ export function LlamadaScene() {
   // ---- Estado B → C (tap = desbloqueo de audio iOS) -----------------------
   const handleAnswer = () => {
     if (stateRef.current !== "ringing") return;
+    // Último gesto antes de la notificación: re-resume del AudioContext y
+    // asegurar que notif + mensaje están decodificados en memoria (iOS)
+    unlockAudioSession([ASSETS.sfx_notif_whatsapp, ASSETS.sfx_mensaje_whatsapp]);
     track("exp2_answer"); // el tono se detiene solo: cleanup del effect de "ringing"
     setState("active");
 
@@ -224,7 +227,8 @@ export function LlamadaScene() {
   }, [state, armTransitionWatchdog]);
 
   const handleNotificationTap = () => {
-    unlockAudioSession(); // re-bendice la sesión para los SFX del chat (iOS)
+    // Re-resume del contexto justo antes del chat (iOS)
+    unlockAudioSession([ASSETS.sfx_mensaje_whatsapp]);
     track("exp2_notification_tap");
     markSceneReached("chat");
     router.push("/chat");
