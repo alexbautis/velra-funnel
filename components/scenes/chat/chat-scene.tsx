@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
-import { ArrowLeft, MoreVertical, Phone, Video } from "lucide-react";
+import {
+  ArrowLeft,
+  Camera,
+  MoreVertical,
+  Paperclip,
+  Phone,
+  Smile,
+  Video,
+} from "lucide-react";
 import { track } from "@/lib/tracking";
 import { useFunnel } from "@/lib/funnel-state";
 import { ASSETS } from "@/lib/assets";
@@ -176,29 +184,28 @@ export function ChatScene() {
   };
 
   return (
-    <main className="flex h-dvh flex-col overflow-hidden bg-wa-bg">
-      {/* Header WhatsApp */}
-      <header className="z-10 flex items-center gap-2 bg-wa-header px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-white shadow-md">
-        <ArrowLeft className="h-6 w-6 shrink-0 opacity-90" />
-        <DraAvatar size={38} />
+    <main className="wa-chat-bg flex h-dvh flex-col overflow-hidden">
+      {/* Header WhatsApp (UI actual: blanco con iconos oscuros) */}
+      <header className="z-10 flex items-center gap-2 bg-white px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-[#0B141B] shadow-sm">
+        <ArrowLeft className="h-6 w-6 shrink-0" />
+        <DraAvatar size={40} />
         <div className="min-w-0 flex-1 pl-1">
-          <p className="truncate font-dm text-[16px] font-medium leading-tight">
+          <p className="truncate font-dm text-[17px] font-medium leading-tight">
             {DRA.name}
           </p>
-          <p className="font-dm text-[12px] leading-tight text-white/75">
+          <p className="font-dm text-[12px] leading-tight text-[#667781]">
             en línea
           </p>
         </div>
-        <Video className="h-6 w-6 shrink-0 opacity-90" />
-        <Phone className="h-5 w-5 shrink-0 opacity-90" />
-        <MoreVertical className="h-6 w-6 shrink-0 opacity-90" />
+        <div className="flex shrink-0 items-center gap-5 pl-1 pr-2">
+          <Video className="h-6 w-6" />
+          <Phone className="h-5 w-5" />
+          <MoreVertical className="h-6 w-6" />
+        </div>
       </header>
 
       {/* Conversación */}
-      <div
-        ref={scrollRef}
-        className="wa-chat-bg flex-1 overflow-y-auto px-3 py-4"
-      >
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4">
         <div className="mx-auto flex max-w-md flex-col gap-1.5">
           <div className="mx-auto mb-2 rounded-md bg-[#FFF5C4] px-3 py-1.5 text-center shadow-sm">
             <p className="text-[12px] text-[#54656f]">
@@ -207,6 +214,11 @@ export function ChatScene() {
               escucharlos o compartirlos. Haz clic para obtener más
               información.
             </p>
+          </div>
+
+          {/* Píldora de fecha */}
+          <div className="mx-auto mb-2 w-fit rounded-lg bg-white px-3 py-1 shadow-sm">
+            <p className="text-[12px] text-[#54656f]">Hoy</p>
           </div>
 
           {revealed.map(({ step, index, time }, i) => {
@@ -263,12 +275,19 @@ export function ChatScene() {
         </div>
       </div>
 
-      {/* Barra de entrada (decorativa: la clienta nunca escribe) */}
-      <div className="flex items-center gap-2 bg-[#F0F2F5] px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
-        <div className="flex-1 rounded-full bg-white px-4 py-2.5">
-          <span className="font-dm text-[15px] text-gray-400">Mensaje</span>
+      {/* Barra de entrada (decorativa: la clienta nunca escribe).
+          UI actual: input flotando sobre el fondo, emoji/clip/cámara
+          dentro y micrófono en FAB oscuro */}
+      <div className="flex items-center gap-2 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5">
+        <div className="flex flex-1 items-center gap-3 rounded-full bg-white px-3.5 py-2.5 shadow-sm">
+          <Smile className="h-6 w-6 shrink-0 text-[#54656f]" />
+          <span className="flex-1 font-dm text-[16px] text-[#8696a0]">
+            Mensaje
+          </span>
+          <Paperclip className="h-[22px] w-[22px] shrink-0 text-[#54656f]" />
+          <Camera className="h-6 w-6 shrink-0 text-[#54656f]" />
         </div>
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-wa-green">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#1F1F1F] shadow-md">
           <svg viewBox="0 0 24 24" className="h-6 w-6 fill-white" aria-hidden>
             <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z" />
           </svg>

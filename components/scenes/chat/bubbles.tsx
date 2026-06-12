@@ -21,7 +21,7 @@ function BubbleShell({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.25 }}
       className={cn(
-        "relative max-w-[80%] rounded-lg bg-wa-bubble shadow-sm",
+        "relative max-w-[80%] rounded-2xl bg-wa-bubble shadow-sm",
         first && "wa-tail-in rounded-tl-none",
         className
       )}
@@ -90,7 +90,7 @@ export function VideoBubble({
     <BubbleShell first={first} className="w-[80%] p-[3px]">
       <button
         onClick={onOpen}
-        className="relative block w-full overflow-hidden rounded-md"
+        className="relative block w-full overflow-hidden rounded-xl"
         aria-label="Reproducir video"
       >
         {thumbFailed ? (
@@ -267,7 +267,7 @@ export function LinkBubble({
   return (
     <BubbleShell first={first} className="w-[80%] p-[3px]">
       <button onClick={onTap} className="block w-full text-left">
-        <div className="overflow-hidden rounded-md bg-[#f0f2f5]">
+        <div className="overflow-hidden rounded-xl bg-[#f0f2f5]">
           {imgFailed ? (
             <div className="flex aspect-[1.91/1] w-full items-center justify-center bg-gradient-to-br from-teal/30 to-blush/40">
               <span className="font-bebas text-3xl tracking-[0.3em] text-ink/60">
@@ -309,7 +309,7 @@ export function TypingIndicator() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      className="wa-tail-in relative w-fit rounded-lg rounded-tl-none bg-wa-bubble px-4 py-3 shadow-sm"
+      className="wa-tail-in relative w-fit rounded-2xl rounded-tl-none bg-wa-bubble px-4 py-3 shadow-sm"
     >
       <div className="flex items-center gap-1">
         {[0, 1, 2].map((i) => (
