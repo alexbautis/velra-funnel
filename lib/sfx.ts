@@ -1,100 +1,108 @@
 // lib/sfx.ts
 // Efectos de sonido (tono de llamada, notificación, mensaje de chat).
-// REGLA DE AUTOPLAY: cualquier play() puede ser rechazado por iOS si no hay
-// gesto previo en la página. Aquí TODO intento de reproducción se hace con
-// catch silencioso, y el primer tap de la clienta en la página "desbloquea"
-// los elementos registrados (play + pause inmediato dentro del gesto).
+//
+// PATRÓN iOS (no cambiar):
+// - Los SFX NO viven como elementos <audio> en el DOM ni se precargan.
+//   Cada uno se instancia con `new Audio(src)` en el momento exacto de
+//   reproducirse y se libera al terminar. Así iOS nunca puede adelantar
+//   una reproducción (iOS IGNORA element.volume: un "play silencioso a
+//   volumen 0" suena a volumen real en iPhone).
+// - El desbloqueo de la sesión se hace UNA vez, dentro del tap de ENTRAR,
+//   reproduciendo un WAV mudo de 0.1s. Eso marca el documento como
+//   "interactuado con media" en WebKit y permite los play() programáticos
+//   posteriores (fin de video → tono, timers del chat → mensaje).
 
-const registry = new Set<HTMLAudioElement>();
-let unlockInstalled = false;
-let unlocked = false;
+let silentDataUri: string | null = null;
+let silentEl: HTMLAudioElement | null = null;
 
-function tryUnlock(audio: HTMLAudioElement) {
-  if (!audio.paused) return;
-  const vol = audio.volume;
-  audio.volume = 0; // silencioso durante el unlock para no interrumpir
-  const p = audio.play();
-  if (p)
-    p.then(() => {
-      audio.pause();
-      audio.currentTime = 0;
-      audio.volume = vol;
-    }).catch(() => { audio.volume = vol; });
-}
-
-function installUnlockListener() {
-  if (unlockInstalled || typeof document === "undefined") return;
-  unlockInstalled = true;
-  const unlock = () => {
-    unlocked = true;
-    registry.forEach(tryUnlock);
-    document.removeEventListener("pointerdown", unlock);
+/** WAV PCM 8-bit mono 8kHz, 0.1s de silencio (~850 bytes). */
+function makeSilentWavDataUri(): string {
+  const sampleRate = 8000;
+  const numSamples = 800;
+  const buf = new Uint8Array(44 + numSamples);
+  const view = new DataView(buf.buffer);
+  const writeStr = (off: number, s: string) => {
+    for (let i = 0; i < s.length; i++) buf[off + i] = s.charCodeAt(i);
   };
-  document.addEventListener("pointerdown", unlock, { passive: true });
+  writeStr(0, "RIFF");
+  view.setUint32(4, 36 + numSamples, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate, true); // byteRate (blockAlign = 1)
+  view.setUint16(32, 1, true); // blockAlign
+  view.setUint16(34, 8, true); // bitsPerSample
+  writeStr(36, "data");
+  view.setUint32(40, numSamples, true);
+  buf.fill(0x80, 44); // silencio en PCM 8-bit
+  let bin = "";
+  for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+  return "data:audio/wav;base64," + btoa(bin);
 }
 
 /**
- * Llama desde un tap handler para pre-activar todos los elementos
- * registrados. Útil para garantizar el unlock en iOS cuando el tap
- * que inicia la sesión ocurre antes de que los SFX sean creados.
+ * Desbloquea el audio de la sesión en iOS. Llamar SOLO dentro de un
+ * handler de tap real (ENTRAR, notificación). Reproduce un WAV mudo;
+ * no toca ningún SFX real. Idempotente y sin efecto audible.
  */
-export function preUnlockAll() {
-  unlocked = true;
-  registry.forEach(tryUnlock);
+export function unlockAudioSession() {
+  if (typeof window === "undefined") return;
+  try {
+    if (!silentDataUri) silentDataUri = makeSilentWavDataUri();
+    if (!silentEl) silentEl = new Audio(silentDataUri);
+    silentEl.currentTime = 0;
+    const p = silentEl.play();
+    if (p) p.catch(() => {});
+  } catch {
+    /* noop */
+  }
 }
 
-export interface Sfx {
-  /** Intenta reproducir desde el inicio. Nunca lanza. */
-  play: () => void;
-  /** Detiene y rebobina. */
+export interface SfxHandle {
+  /** Detiene y libera el elemento. */
   stop: () => void;
-  element: HTMLAudioElement;
 }
 
 /**
- * Crea un efecto de sonido. `loop` para el tono de llamada.
- * `volume` 0–1 (medio para el tono, bajo para notificación/mensajes).
+ * Instancia y reproduce un SFX AHORA. Nunca lanza. El elemento se libera
+ * al terminar (one-shot) o al llamar stop() (loops).
+ * Nota: iOS ignora `volume` (siempre suena a volumen de hardware);
+ * en Android sí se aplica.
  */
-export function createSfx(
+export function playSfx(
   src: string,
   { loop = false, volume = 0.35 }: { loop?: boolean; volume?: number } = {}
-): Sfx {
-  const audio = new Audio(src);
-  audio.loop = loop;
-  audio.volume = volume;
-  audio.preload = "auto";
-  registry.add(audio);
-  installUnlockListener();
-  // Si el usuario ya tapó antes de que se creara este elemento, activarlo ya
-  if (unlocked) tryUnlock(audio);
-
+): SfxHandle {
+  if (typeof window === "undefined") return { stop() {} };
+  let audio: HTMLAudioElement | null = null;
+  try {
+    audio = new Audio(src);
+    audio.loop = loop;
+    audio.volume = volume;
+    const p = audio.play();
+    if (p) p.catch(() => {});
+    if (!loop) {
+      audio.onended = () => {
+        if (audio) audio.src = "";
+      };
+    }
+  } catch {
+    /* asset ausente o autoplay bloqueado: silencio, nunca romper */
+  }
   return {
-    element: audio,
-    play() {
-      try {
-        audio.currentTime = 0;
-        const p = audio.play();
-        if (p) p.catch(() => {});
-      } catch {
-        /* asset ausente o autoplay bloqueado: silencio, nunca romper */
-      }
-    },
     stop() {
       try {
-        audio.pause();
-        audio.currentTime = 0;
+        if (audio) {
+          audio.pause();
+          audio.src = "";
+          audio = null;
+        }
       } catch {
         /* noop */
       }
     },
   };
-}
-
-export function disposeSfx(sfx: Sfx) {
-  sfx.stop();
-  registry.delete(sfx.element);
-}
-
-export function isAudioUnlocked() {
-  return unlocked;
 }

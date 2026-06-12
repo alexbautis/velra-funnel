@@ -7,7 +7,7 @@ import { ArrowLeft, MoreVertical, Phone, Video } from "lucide-react";
 import { track } from "@/lib/tracking";
 import { useFunnel } from "@/lib/funnel-state";
 import { ASSETS } from "@/lib/assets";
-import { createSfx, disposeSfx, type Sfx } from "@/lib/sfx";
+import { playSfx } from "@/lib/sfx";
 import { nowTimeLabel } from "@/lib/utils";
 import { DraAvatar } from "@/components/dra-avatar";
 import { CHAT_SCRIPT, DRA, type ChatStep } from "@/content/chat-script";
@@ -49,7 +49,6 @@ export function ChatScene() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const activeVideoRef = useRef<{ index: number; id: string } | null>(null);
 
-  const msgSfxRef = useRef<Sfx | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const trackOnce = useCallback((event: string) => {
@@ -81,7 +80,8 @@ export function ChatScene() {
 
       setTyping(false);
       setRevealed((prev) => [...prev, { step, index, time: nowTimeLabel() }]);
-      msgSfxRef.current?.play();
+      // Instancia nueva por burbuja, en el momento exacto (patrón iOS)
+      playSfx(ASSETS.sfx_mensaje_whatsapp, { volume: 0.2 });
 
       if ("gate" in step && step.gate) {
         gateWaitingRef.current = index;
@@ -113,16 +113,12 @@ export function ChatScene() {
 
   useEffect(() => {
     track("chat_view");
-    msgSfxRef.current = createSfx(ASSETS.sfx_mensaje_whatsapp, {
-      volume: 0.2,
-    });
     later(scheduleNext, 800);
     const timers = timersRef.current;
     const gateTimers = gateTimersRef.current;
     return () => {
       timers.forEach((id) => window.clearTimeout(id));
       gateTimers.forEach((id) => window.clearTimeout(id));
-      if (msgSfxRef.current) disposeSfx(msgSfxRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -7,7 +7,7 @@ import { Phone } from "lucide-react";
 import { track } from "@/lib/tracking";
 import { useFunnel } from "@/lib/funnel-state";
 import { ASSETS } from "@/lib/assets";
-import { createSfx, disposeSfx, type Sfx } from "@/lib/sfx";
+import { playSfx, unlockAudioSession } from "@/lib/sfx";
 import { DraAvatar } from "@/components/dra-avatar";
 import { DRA } from "@/content/chat-script";
 
@@ -39,8 +39,6 @@ export function LlamadaScene() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const introVideoRef = useRef<HTMLVideoElement | null>(null);
-  const ringRef = useRef<Sfx | null>(null);
-  const notifSfxRef = useRef<Sfx | null>(null);
   const notifPlayed = useRef(false);
   const stateRef = useRef<CallState>("intro");
   stateRef.current = state;
@@ -56,16 +54,7 @@ export function LlamadaScene() {
 
   useEffect(() => {
     track("exp2_view");
-    ringRef.current = createSfx(ASSETS.sfx_tono_llamada, {
-      loop: true,
-      volume: 0.5,
-    });
-    notifSfxRef.current = createSfx(ASSETS.sfx_notif_whatsapp, {
-      volume: 0.25,
-    });
     return () => {
-      if (ringRef.current) disposeSfx(ringRef.current);
-      if (notifSfxRef.current) disposeSfx(notifSfxRef.current);
       if (waveRafRef.current !== null) cancelAnimationFrame(waveRafRef.current);
       audioCtxRef.current?.close();
     };
@@ -76,7 +65,8 @@ export function LlamadaScene() {
     setShowNotification(true);
     if (!notifPlayed.current) {
       notifPlayed.current = true;
-      notifSfxRef.current?.play();
+      // Se instancia y suena AQUÍ, en el momento exacto (patrón iOS)
+      playSfx(ASSETS.sfx_notif_whatsapp, { volume: 0.25 });
     }
   }, []);
 
@@ -84,8 +74,15 @@ export function LlamadaScene() {
   const goRinging = useCallback(() => {
     if (stateRef.current !== "intro") return;
     setState("ringing");
-    ringRef.current?.play();
   }, []);
+
+  // Tono de llamada: existe SOLO mientras el estado es "ringing".
+  // Se instancia al entrar y se libera al salir (contestar o fallback).
+  useEffect(() => {
+    if (state !== "ringing") return;
+    const ring = playSfx(ASSETS.sfx_tono_llamada, { loop: true, volume: 0.5 });
+    return () => ring.stop();
+  }, [state]);
 
   const handleIntroEnded = useCallback(() => {
     track("exp2_video_intro_end");
@@ -156,8 +153,7 @@ export function LlamadaScene() {
   // ---- Estado B → C (tap = desbloqueo de audio iOS) -----------------------
   const handleAnswer = () => {
     if (stateRef.current !== "ringing") return;
-    ringRef.current?.stop();
-    track("exp2_answer");
+    track("exp2_answer"); // el tono se detiene solo: cleanup del effect de "ringing"
     setState("active");
 
     const audio = audioRef.current;
@@ -228,6 +224,7 @@ export function LlamadaScene() {
   }, [state, armTransitionWatchdog]);
 
   const handleNotificationTap = () => {
+    unlockAudioSession(); // re-bendice la sesión para los SFX del chat (iOS)
     track("exp2_notification_tap");
     markSceneReached("chat");
     router.push("/chat");

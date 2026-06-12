@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { track } from "@/lib/tracking";
 import { useFunnel } from "@/lib/funnel-state";
 import { ASSETS } from "@/lib/assets";
-import { preUnlockAll } from "@/lib/sfx";
+import { unlockAudioSession } from "@/lib/sfx";
 
 /** ESCENA 1 — Landing mínima */
 export default function LandingPage() {
@@ -28,7 +28,7 @@ export default function LandingPage() {
   }, [captureUtms]);
 
   const handleEnter = () => {
-    preUnlockAll(); // marca unlocked=true; cuando los SFX se creen en /llamada se pre-activan en iOS
+    unlockAudioSession(); // WAV mudo dentro del tap: desbloquea audio iOS sin sonar nada
     track("landing_enter");
     markSceneReached("llamada");
     router.push("/llamada");
