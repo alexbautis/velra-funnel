@@ -12,16 +12,16 @@ export const ASSETS = {
   sfx_tono_llamada: `${AUDIO}/sfx_tono_llamada.mp3`,
   sfx_notif_whatsapp: `${AUDIO}/sfx_notif_whatsapp.mp3`,
   sfx_mensaje_whatsapp: `${AUDIO}/sfx_mensaje_whatsapp.mp3`,
-  // Video e imágenes (Sirv) — ?v=2 fuerza recarga tras reemplazar el archivo
-  video_intro_llamada: `${SIRV}/video_intro_llamada.mp4?v=2`,
-  video_transicion_teclea: `${SIRV}/video_transicion_teclea.mp4?v=2`,
-  video_1_fascia: `${SIRV}/video_1_fascia.mp4?v=2`,
-  video_2_mecanismo: `${SIRV}/video_2_mecanismo.mp4?v=2`,
-  video_3_ugc: `${SIRV}/video_3_ugc.mp4?v=2`,
-  foto_dra_perfil: `${SIRV}/foto_dra_perfil.png`,
-  foto_producto: `${SIRV}/foto_producto.png`,
-  landing_bg: `${SIRV}/landing_bg.png`,
-  bg_llamada_entrante: `${SIRV}/bg_llamada_entrante.png`,
+  // Video e imágenes (Sirv) — subir ?v=N fuerza recarga tras reemplazar archivos
+  video_intro_llamada: `${SIRV}/video_intro_llamada.mp4?v=3`,
+  video_transicion_teclea: `${SIRV}/video_transicion_teclea.mp4?v=3`,
+  video_1_fascia: `${SIRV}/video_1_fascia.mp4?v=3`,
+  video_2_mecanismo: `${SIRV}/video_2_mecanismo.mp4?v=3`,
+  video_3_ugc: `${SIRV}/video_3_ugc.mp4?v=3`,
+  foto_dra_perfil: `${SIRV}/foto_dra_perfil.png?v=3`,
+  foto_producto: `${SIRV}/foto_producto.png?v=3`,
+  landing_bg: `${SIRV}/landing_bg.png?v=3`,
+  bg_llamada_entrante: `${SIRV}/bg_llamada_entrante.png?v=3`,
 } as const;
 
 export type AssetKey = keyof typeof ASSETS;
