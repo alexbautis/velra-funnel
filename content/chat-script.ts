@@ -43,10 +43,10 @@ export const CHAT_SCRIPT: ChatStep[] = [
   // 1
   {
     kind: "text",
-    text: "Prefiero escribirte esto porque lo que quiero mostrarte necesitas verlo, no solo escucharlo.",
+    text: "Prefiero escribirte esto porque lo que quiero mostrarte necesitas verlo, no solo escucharlo",
   },
   // 2
-  { kind: "text", text: "Mira esto." },
+  { kind: "text", text: "Mira esto" },
   // 3
   {
     kind: "video",
@@ -58,10 +58,10 @@ export const CHAT_SCRIPT: ChatStep[] = [
   // 4
   {
     kind: "text",
-    text: "Ahora entiendes por qué nada de lo que probaste podía funcionar.",
+    text: "Ahora entiendes por qué nada de lo que probaste podía funcionar",
   },
   // 5
-  { kind: "text", text: "Pero hay algo más que necesitas ver." },
+  { kind: "text", text: "Pero hay algo más que necesitas ver" },
   // 6
   {
     kind: "video",
@@ -73,12 +73,12 @@ export const CHAT_SCRIPT: ChatStep[] = [
   // 7
   {
     kind: "text",
-    text: "Esa presión constante también se puede trabajar desde casa.",
+    text: "Esa presión constante también se puede trabajar desde casa",
   },
   // 8
-  { kind: "text", text: "Es lo que les recomiendo a mis pacientes." },
+  { kind: "text", text: "Es lo que les recomiendo a mis pacientes" },
   // 9
-  { kind: "text", text: "Mira lo que me envió una de ellas." },
+  { kind: "text", text: "Mira lo que me envió una de ellas" },
   // 10
   {
     kind: "video",
@@ -88,7 +88,7 @@ export const CHAT_SCRIPT: ChatStep[] = [
     gate: true,
   },
   // 11
-  { kind: "text", text: "Sé lo que estás pensando ahora mismo." },
+  { kind: "text", text: "Sé lo que estás pensando ahora mismo" },
   // 12
   {
     kind: "voice",
@@ -114,9 +114,9 @@ export const CHAT_SCRIPT: ChatStep[] = [
     gate: true,
   },
   // 15
-  { kind: "text", text: "Solo hay una cosa que no te puedo enseñar por aquí." },
+  { kind: "text", text: "Solo hay una cosa que no te puedo enseñar por aquí" },
   // 16
-  { kind: "text", text: "Cómo se siente en tu cuerpo." },
+  { kind: "text", text: "Cómo se siente en tu cuerpo" },
   // 17
   {
     kind: "link",

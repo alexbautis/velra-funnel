@@ -8,15 +8,21 @@ import { track } from "@/lib/tracking";
 import { useFunnel } from "@/lib/funnel-state";
 import { ASSETS } from "@/lib/assets";
 import { createSfx, disposeSfx, type Sfx } from "@/lib/sfx";
-import { formatTime } from "@/lib/utils";
 import { DraAvatar } from "@/components/dra-avatar";
 import { DRA } from "@/content/chat-script";
 
 type CallState = "intro" | "ringing" | "active" | "ended" | "transition";
 
-const CALL_FALLBACK_MS = 60_000; // si el audio falla, mostrar la notificación igual
-const INTRO_SAFETY_MS = 12_000;
-const TRANSITION_SAFETY_MS = 8_000;
+const CALL_FALLBACK_MS = 60_000;
+const INTRO_SAFETY_MS = 8_000;      // video intro ~5-8s
+const TRANSITION_SAFETY_MS = 5_000; // video transición ~3s
+const BAR_COUNT = 18;
+
+function formatCallTimer(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
 
 /** ESCENA 2 — Video intro + llamada + video transición + notificación */
 export function LlamadaScene() {
@@ -27,6 +33,9 @@ export function LlamadaScene() {
   const [showNotification, setShowNotification] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [finalDuration, setFinalDuration] = useState(0);
+  const [waveformBars, setWaveformBars] = useState<number[]>(
+    Array(BAR_COUNT).fill(2)
+  );
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const introVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -37,6 +46,13 @@ export function LlamadaScene() {
   stateRef.current = state;
   const notifShownRef = useRef(false);
   notifShownRef.current = showNotification;
+  const elapsedRef = useRef(0);
+  elapsedRef.current = elapsed;
+
+  // Web Audio API
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const waveRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     track("exp2_view");
@@ -50,6 +66,8 @@ export function LlamadaScene() {
     return () => {
       if (ringRef.current) disposeSfx(ringRef.current);
       if (notifSfxRef.current) disposeSfx(notifSfxRef.current);
+      if (waveRafRef.current !== null) cancelAnimationFrame(waveRafRef.current);
+      audioCtxRef.current?.close();
     };
   }, []);
 
@@ -66,8 +84,6 @@ export function LlamadaScene() {
   const goRinging = useCallback(() => {
     if (stateRef.current !== "intro") return;
     setState("ringing");
-    // Tono de llamada en loop. En iOS sin gesto previo en esta página el
-    // play() puede ser rechazado: catch silencioso (lib/sfx).
     ringRef.current?.play();
   }, []);
 
@@ -76,9 +92,6 @@ export function LlamadaScene() {
     goRinging();
   }, [goRinging]);
 
-  // Watchdog del intro: se rearma con cada timeupdate, así el video puede
-  // durar lo que sea; solo salta a la llamada si NO avanza (asset ausente,
-  // red colgada) durante INTRO_SAFETY_MS.
   const introWatchdogRef = useRef<number | null>(null);
   const armIntroWatchdog = useCallback(() => {
     if (introWatchdogRef.current !== null)
@@ -95,10 +108,7 @@ export function LlamadaScene() {
     };
   }, [state, armIntroWatchdog]);
 
-  // Video intro CON sonido: el tap en ENTRAR de la landing (navegación
-  // client-side, mismo documento) ya desbloqueó el audio de la sesión.
-  // Si el navegador lo bloquea igualmente (p. ej. entrada directa a
-  // /llamada sin gesto previo), fallback a muted para no perder el intro.
+  // Video intro CON sonido; fallback a muted si el navegador lo bloquea.
   useEffect(() => {
     const v = introVideoRef.current;
     if (!v) return;
@@ -112,7 +122,38 @@ export function LlamadaScene() {
       });
   }, [goRinging]);
 
-  // ---- Estado B → C (tap de contestar = desbloqueo de audio iOS) ----------
+  // ---- Web Audio API waveform (se inicia dentro del tap handler) ----------
+  const setupAnalyser = (audio: HTMLAudioElement) => {
+    try {
+      const ctx = new AudioContext();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 64;
+      analyser.smoothingTimeConstant = 0.75;
+      const source = ctx.createMediaElementSource(audio);
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+      audioCtxRef.current = ctx;
+      analyserRef.current = analyser;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        if (stateRef.current !== "active") return;
+        if (ctx.state === "suspended") ctx.resume();
+        analyser.getByteFrequencyData(dataArray);
+        const bars = Array.from({ length: BAR_COUNT }, (_, i) => {
+          const idx = Math.floor((i / BAR_COUNT) * dataArray.length * 0.65);
+          return Math.max(2, Math.round((dataArray[idx] / 255) * 28));
+        });
+        setWaveformBars(bars);
+        waveRafRef.current = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch {
+      // Web Audio API no disponible; barras mantienen altura mínima
+    }
+  };
+
+  // ---- Estado B → C (tap = desbloqueo de audio iOS) -----------------------
   const handleAnswer = () => {
     if (stateRef.current !== "ringing") return;
     ringRef.current?.stop();
@@ -121,14 +162,13 @@ export function LlamadaScene() {
 
     const audio = audioRef.current;
     if (audio) {
-      // SIEMPRE dentro del handler del tap (política de autoplay iOS)
+      setupAnalyser(audio); // dentro del handler del tap (política iOS)
       const p = audio.play();
       if (p) p.catch(() => scheduleAudioFailure());
     } else {
       scheduleAudioFailure();
     }
 
-    // Fallback duro: nunca dejar la escena sin salida
     window.setTimeout(() => {
       if (!notifShownRef.current && stateRef.current !== "transition") {
         setState("transition");
@@ -145,7 +185,6 @@ export function LlamadaScene() {
     }, 2_500);
   };
 
-  // Timer de la llamada
   useEffect(() => {
     if (state !== "active") return;
     const started = Date.now();
@@ -155,25 +194,20 @@ export function LlamadaScene() {
     return () => window.clearInterval(interval);
   }, [state]);
 
-  // ---- Estado C → D → E ----------------------------------------------------
+  // ---- Estado C → D → E --------------------------------------------------
   const endCall = () => {
     if (stateRef.current !== "active") return;
+    if (waveRafRef.current !== null) cancelAnimationFrame(waveRafRef.current);
     setFinalDuration(elapsedRef.current);
     setState("ended");
     window.setTimeout(() => setState("transition"), 1_700);
   };
-
-  const elapsedRef = useRef(0);
-  elapsedRef.current = elapsed;
 
   const handleAudioEnded = () => {
     track("exp2_audio_complete");
     endCall();
   };
 
-  // ---- Estado E: video transición → notificación --------------------------
-  // Mismo patrón de watchdog: la notificación aparece al TERMINAR el video;
-  // el timer solo dispara si el video no avanza.
   const transitionWatchdogRef = useRef<number | null>(null);
   const armTransitionWatchdog = useCallback(() => {
     if (transitionWatchdogRef.current !== null)
@@ -241,26 +275,40 @@ export function LlamadaScene() {
         {(state === "ringing" || state === "active" || state === "ended") && (
           <motion.div
             key="call"
-            className="absolute inset-0 flex flex-col items-center justify-between bg-gradient-to-b from-ink-soft via-ink to-ink px-8 py-16"
+            className="absolute inset-0 flex flex-col items-center justify-between px-8 py-16"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
           >
+            {/* Fondo: bg_llamada_entrante.jpg a pantalla completa */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={ASSETS.bg_llamada_entrante}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full object-cover"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+            {/* Overlay para profundidad y legibilidad */}
+            <div className="absolute inset-0 bg-[rgba(10,10,10,0.45)]" />
+
+            {/* Contenido — por encima del overlay */}
             <div
-              className={`flex flex-col items-center gap-4 pt-6 ${
+              className={`relative z-10 flex flex-col items-center gap-4 pt-6 ${
                 state === "ringing" ? "animate-call-shake" : ""
               }`}
             >
-              <p className="font-dm text-sm tracking-wide text-white/50">
+              <p className="font-dm text-sm tracking-wide text-white/60">
                 {state === "ringing" && (
                   <span className="animate-soft-blink">Llamada entrante…</span>
                 )}
-                {state === "active" && formatTime(elapsed)}
                 {state === "ended" && "Llamada finalizada"}
               </p>
 
-              {/* Foto con anillo de progreso */}
+              {/* Avatar con anillo de progreso */}
               <div className="relative">
                 <svg
                   width="168"
@@ -297,6 +345,7 @@ export function LlamadaScene() {
                 </div>
               </div>
 
+              {/* Nombre y especialidad */}
               <div className="text-center">
                 <h1 className="font-poppins text-2xl font-semibold text-white">
                   {DRA.name}
@@ -306,31 +355,35 @@ export function LlamadaScene() {
                 </p>
                 {state === "ended" && (
                   <p className="mt-3 font-dm text-sm text-white/40">
-                    {formatTime(finalDuration)}
+                    {formatCallTimer(finalDuration)}
                   </p>
                 )}
               </div>
 
-              {/* Ondas reaccionando al audio */}
+              {/* Waveform con Web Audio API + timer — solo estado activo */}
               {state === "active" && (
-                <div className="mt-2 flex h-8 items-center gap-[3px]">
-                  {Array.from({ length: 24 }).map((_, i) => (
-                    <span
-                      key={i}
-                      className="w-[3px] rounded-full bg-teal/80"
-                      style={{
-                        height: `${8 + ((i * 7) % 20)}px`,
-                        animation: `wave 0.9s ease-in-out ${(i % 6) * 0.12}s infinite`,
-                        transformOrigin: "center",
-                      }}
-                    />
-                  ))}
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex h-8 items-end gap-[3px]">
+                    {waveformBars.map((h, i) => (
+                      <span
+                        key={i}
+                        className="w-[3px] rounded-full bg-teal/90"
+                        style={{
+                          height: `${h}px`,
+                          transition: "height 0.08s ease",
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <p className="font-dm text-base font-medium tabular-nums text-white/80">
+                    {formatCallTimer(elapsed)}
+                  </p>
                 </div>
               )}
             </div>
 
-            {/* Botón verde de contestar (pulsante) */}
-            <div className="pb-6">
+            {/* Botón verde de contestar */}
+            <div className="relative z-10 pb-6">
               {state === "ringing" && (
                 <motion.button
                   onClick={handleAnswer}
