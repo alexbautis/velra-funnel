@@ -29,6 +29,7 @@ export function LlamadaScene() {
   const [finalDuration, setFinalDuration] = useState(0);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const introVideoRef = useRef<HTMLVideoElement | null>(null);
   const ringRef = useRef<Sfx | null>(null);
   const notifSfxRef = useRef<Sfx | null>(null);
   const notifPlayed = useRef(false);
@@ -75,11 +76,41 @@ export function LlamadaScene() {
     goRinging();
   }, [goRinging]);
 
+  // Watchdog del intro: se rearma con cada timeupdate, así el video puede
+  // durar lo que sea; solo salta a la llamada si NO avanza (asset ausente,
+  // red colgada) durante INTRO_SAFETY_MS.
+  const introWatchdogRef = useRef<number | null>(null);
+  const armIntroWatchdog = useCallback(() => {
+    if (introWatchdogRef.current !== null)
+      window.clearTimeout(introWatchdogRef.current);
+    introWatchdogRef.current = window.setTimeout(goRinging, INTRO_SAFETY_MS);
+  }, [goRinging]);
+
   useEffect(() => {
     if (state !== "intro") return;
-    const t = setTimeout(goRinging, INTRO_SAFETY_MS);
-    return () => clearTimeout(t);
-  }, [state, goRinging]);
+    armIntroWatchdog();
+    return () => {
+      if (introWatchdogRef.current !== null)
+        window.clearTimeout(introWatchdogRef.current);
+    };
+  }, [state, armIntroWatchdog]);
+
+  // Video intro CON sonido: el tap en ENTRAR de la landing (navegación
+  // client-side, mismo documento) ya desbloqueó el audio de la sesión.
+  // Si el navegador lo bloquea igualmente (p. ej. entrada directa a
+  // /llamada sin gesto previo), fallback a muted para no perder el intro.
+  useEffect(() => {
+    const v = introVideoRef.current;
+    if (!v) return;
+    v.muted = false;
+    const p = v.play();
+    if (p)
+      p.catch(() => {
+        v.muted = true;
+        const retry = v.play();
+        if (retry) retry.catch(() => goRinging());
+      });
+  }, [goRinging]);
 
   // ---- Estado B → C (tap de contestar = desbloqueo de audio iOS) ----------
   const handleAnswer = () => {
@@ -141,11 +172,26 @@ export function LlamadaScene() {
   };
 
   // ---- Estado E: video transición → notificación --------------------------
+  // Mismo patrón de watchdog: la notificación aparece al TERMINAR el video;
+  // el timer solo dispara si el video no avanza.
+  const transitionWatchdogRef = useRef<number | null>(null);
+  const armTransitionWatchdog = useCallback(() => {
+    if (transitionWatchdogRef.current !== null)
+      window.clearTimeout(transitionWatchdogRef.current);
+    transitionWatchdogRef.current = window.setTimeout(
+      revealNotification,
+      TRANSITION_SAFETY_MS
+    );
+  }, [revealNotification]);
+
   useEffect(() => {
     if (state !== "transition") return;
-    const t = setTimeout(revealNotification, TRANSITION_SAFETY_MS);
-    return () => clearTimeout(t);
-  }, [state, revealNotification]);
+    armTransitionWatchdog();
+    return () => {
+      if (transitionWatchdogRef.current !== null)
+        window.clearTimeout(transitionWatchdogRef.current);
+    };
+  }, [state, armTransitionWatchdog]);
 
   const handleNotificationTap = () => {
     track("exp2_notification_tap");
@@ -181,11 +227,11 @@ export function LlamadaScene() {
             transition={{ duration: 0.5 }}
           >
             <video
+              ref={introVideoRef}
               src={ASSETS.video_intro_llamada}
               className="h-full w-full object-cover"
-              autoPlay
-              muted
               playsInline
+              onTimeUpdate={armIntroWatchdog}
               onEnded={handleIntroEnded}
               onError={goRinging}
             />
@@ -313,6 +359,7 @@ export function LlamadaScene() {
               autoPlay
               muted
               playsInline
+              onTimeUpdate={armTransitionWatchdog}
               onEnded={revealNotification}
               onError={revealNotification}
             />
