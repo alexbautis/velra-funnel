@@ -79,6 +79,8 @@ export function LlamadaScene() {
   const [waveformBars, setWaveformBars] = useState<number[]>(
     Array(BAR_COUNT).fill(2)
   );
+  // Si Web Audio no está disponible, las barras se animan por CSS
+  const [waveCss, setWaveCss] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const introVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -94,10 +96,12 @@ export function LlamadaScene() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const waveRafRef = useRef<number | null>(null);
+  const waveRunningRef = useRef(false);
 
   useEffect(() => {
     track("exp2_view");
     return () => {
+      waveRunningRef.current = false;
       if (waveRafRef.current !== null) cancelAnimationFrame(waveRafRef.current);
       audioCtxRef.current?.close();
     };
@@ -204,8 +208,11 @@ export function LlamadaScene() {
       analyserRef.current = analyser;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      // Flag propio para el bucle: stateRef aún dice "ringing" en el primer
+      // frame (setState es asíncrono) y cortaba el bucle antes de arrancar
+      waveRunningRef.current = true;
       const tick = () => {
-        if (stateRef.current !== "active") return;
+        if (!waveRunningRef.current) return;
         if (ctx.state === "suspended") ctx.resume();
         analyser.getByteFrequencyData(dataArray);
         const bars = Array.from({ length: BAR_COUNT }, (_, i) => {
@@ -217,7 +224,8 @@ export function LlamadaScene() {
       };
       tick();
     } catch {
-      // Web Audio API no disponible; barras mantienen altura mínima
+      // Web Audio no disponible: animar las barras por CSS igualmente
+      setWaveCss(true);
     }
   };
 
@@ -272,6 +280,7 @@ export function LlamadaScene() {
   // ---- Estado C → D → E --------------------------------------------------
   const endCall = () => {
     if (stateRef.current !== "active") return;
+    waveRunningRef.current = false;
     if (waveRafRef.current !== null) cancelAnimationFrame(waveRafRef.current);
     setFinalDuration(elapsedRef.current);
     setState("ended");
@@ -440,15 +449,23 @@ export function LlamadaScene() {
               {/* Waveform con Web Audio API + timer — solo estado activo */}
               {state === "active" && (
                 <div className="flex flex-col items-center gap-2">
-                  <div className="flex h-8 items-end gap-[3px]">
+                  <div className="flex h-8 items-center gap-[3px]">
                     {waveformBars.map((h, i) => (
                       <span
                         key={i}
                         className="w-[3px] rounded-full bg-teal/90"
-                        style={{
-                          height: `${h}px`,
-                          transition: "height 0.08s ease",
-                        }}
+                        style={
+                          waveCss
+                            ? {
+                                height: `${8 + ((i * 7) % 20)}px`,
+                                animation: `wave 0.9s ease-in-out ${(i % 6) * 0.12}s infinite`,
+                                transformOrigin: "center",
+                              }
+                            : {
+                                height: `${h}px`,
+                                transition: "height 0.08s ease",
+                              }
+                        }
                       />
                     ))}
                   </div>
