@@ -11,12 +11,15 @@ let unlocked = false;
 
 function tryUnlock(audio: HTMLAudioElement) {
   if (!audio.paused) return;
+  const vol = audio.volume;
+  audio.volume = 0; // silencioso durante el unlock para no interrumpir
   const p = audio.play();
   if (p)
     p.then(() => {
       audio.pause();
       audio.currentTime = 0;
-    }).catch(() => {});
+      audio.volume = vol;
+    }).catch(() => { audio.volume = vol; });
 }
 
 function installUnlockListener() {
