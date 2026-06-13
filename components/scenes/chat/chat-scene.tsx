@@ -46,6 +46,9 @@ export function ChatScene() {
   const [revealed, setRevealed] = useState<RevealedMsg[]>([]);
   const [typing, setTyping] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
+  // Videos ya reproducidos hasta el final: su burbuja queda "vista" y no
+  // vuelve a abrirse.
+  const [consumed, setConsumed] = useState<Set<string>>(() => new Set());
 
   const nextIndexRef = useRef(0);
   const gateWaitingRef = useRef<number | null>(null);
@@ -56,6 +59,10 @@ export function ChatScene() {
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const activeVideoRef = useRef<{ index: number; id: string } | null>(null);
+  // "Atrapado": true desde el tap hasta que el video termina/falla.
+  const videoBusyRef = useRef(false);
+  // Watchdog de arranque: si el video nunca empieza a reproducir, avanzar.
+  const startWatchdogRef = useRef<number | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -127,6 +134,8 @@ export function ChatScene() {
     return () => {
       timers.forEach((id) => window.clearTimeout(id));
       gateTimers.forEach((id) => window.clearTimeout(id));
+      if (startWatchdogRef.current !== null)
+        window.clearTimeout(startWatchdogRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -138,43 +147,70 @@ export function ChatScene() {
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [revealed.length, typing]);
 
-  // ---- Videos: reproductor fullscreen --------------------------------------
+  // ---- Videos: reproductor "atrapado" --------------------------------------
+  // Cierra el reproductor y avanza la conversación. `consume` marca el video
+  // como visto (su burbuja ya no se puede reabrir).
+  const finishVideo = (consume: boolean) => {
+    const v = videoRef.current;
+    if (v) v.pause();
+    if (startWatchdogRef.current !== null) {
+      window.clearTimeout(startWatchdogRef.current);
+      startWatchdogRef.current = null;
+    }
+    setOverlayOpen(false);
+    videoBusyRef.current = false;
+    const active = activeVideoRef.current;
+    if (active) {
+      activeVideoRef.current = null;
+      if (consume)
+        setConsumed((prev) => {
+          const next = new Set(prev);
+          next.add(active.id);
+          return next;
+        });
+      completeGate(active.index);
+    }
+  };
+
   const openVideo = (index: number, id: string, src: string) => {
-    trackOnce(`chat_${id}_play`);
+    // Solo se abre una vez: ni si ya está en curso ni si ya se vio.
+    if (videoBusyRef.current || consumed.has(id)) return;
     const v = videoRef.current;
     if (!v) {
       completeGate(index);
       return;
     }
+    videoBusyRef.current = true;
+    trackOnce(`chat_${id}_play`);
     activeVideoRef.current = { index, id };
+    setOverlayOpen(true);
     v.src = src;
     v.currentTime = 0;
+    // Arranca CON sonido (el tap es gesto directo; audio ya desbloqueado)
+    v.muted = false;
+    v.volume = 1;
     // play() síncrono dentro del tap (autoplay iOS)
     const p = v.play();
-    if (p)
-      p.catch(() => {
-        // Asset ausente: cerrar y no bloquear la conversación
-        closeVideo();
-      });
-    setOverlayOpen(true);
+    if (p) p.catch(() => finishVideo(true));
+    // Si nunca llega a reproducir (red colgada), avanzar para no atrapar.
+    startWatchdogRef.current = window.setTimeout(() => finishVideo(true), 20_000);
   };
 
-  const closeVideo = () => {
-    const v = videoRef.current;
-    if (v) v.pause();
-    setOverlayOpen(false);
-    const active = activeVideoRef.current;
-    if (active) {
-      activeVideoRef.current = null;
-      completeGate(active.index);
+  // El video empezó a reproducir: cancelar el watchdog de arranque.
+  const handleVideoPlaying = () => {
+    if (startWatchdogRef.current !== null) {
+      window.clearTimeout(startWatchdogRef.current);
+      startWatchdogRef.current = null;
     }
   };
 
   const handleVideoEnded = () => {
     const active = activeVideoRef.current;
     if (active) trackOnce(`chat_${active.id}_complete`);
-    closeVideo();
+    finishVideo(true);
   };
+
+  const handleVideoError = () => finishVideo(true);
 
   // ---- Salida a la Sales Page ----------------------------------------------
   const handleLinkTap = () => {
@@ -241,6 +277,7 @@ export function ChatScene() {
                     durationLabel={step.durationLabel}
                     time={time}
                     first={first}
+                    consumed={consumed.has(step.id)}
                     onOpen={() => openVideo(index, step.id, step.src)}
                   />
                 );
@@ -290,9 +327,9 @@ export function ChatScene() {
       <VideoOverlay
         ref={videoRef}
         open={overlayOpen}
-        onClose={closeVideo}
         onEnded={handleVideoEnded}
-        onError={closeVideo}
+        onError={handleVideoError}
+        onPlaying={handleVideoPlaying}
       />
     </main>
   );

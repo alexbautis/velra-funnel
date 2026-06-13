@@ -77,21 +77,42 @@ export function VideoBubble({
   time,
   onOpen,
   first,
+  consumed = false,
 }: {
   src: string;
   durationLabel: string;
   time: string;
   onOpen: () => void;
   first?: boolean;
+  /** Video ya visto: sin botón de play, no se puede reabrir. */
+  consumed?: boolean;
 }) {
   const [thumbFailed, setThumbFailed] = useState(false);
+  const [thumbReady, setThumbReady] = useState(false);
+
+  // Solo clicable cuando el primer frame está listo y no se ha visto aún:
+  // evita doble tap antes de que cargue y la reapertura tras consumirse.
+  const clickable = !consumed && thumbReady;
 
   return (
     <BubbleShell first={first} className="w-[80%] p-[3px]">
       <button
-        onClick={onOpen}
+        onClick={(e) => {
+          if (!clickable) {
+            e.preventDefault();
+            return;
+          }
+          onOpen();
+        }}
+        disabled={!clickable}
+        aria-label={consumed ? "Video visto" : "Reproducir video"}
         className="relative block w-full overflow-hidden rounded-xl"
-        aria-label="Reproducir video"
+        style={{
+          cursor: clickable ? "pointer" : "default",
+          WebkitTouchCallout: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+        }}
       >
         {thumbFailed ? (
           <div className="aspect-[4/5] w-full bg-gradient-to-br from-[#2b3942] to-[#10181d]" />
@@ -102,14 +123,33 @@ export function VideoBubble({
             preload="metadata"
             muted
             playsInline
-            onError={() => setThumbFailed(true)}
+            disablePictureInPicture
+            onContextMenu={(e) => e.preventDefault()}
+            onLoadedData={() => setThumbReady(true)}
+            onCanPlay={() => setThumbReady(true)}
+            onError={() => {
+              setThumbFailed(true);
+              setThumbReady(true);
+            }}
           />
         )}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm">
-            <Play className="ml-1 h-7 w-7 text-white" fill="currentColor" />
-          </span>
-        </div>
+
+        {/* Botón de play (solo cuando se puede reproducir) */}
+        {clickable && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm">
+              <Play className="ml-1 h-7 w-7 text-white" fill="currentColor" />
+            </span>
+          </div>
+        )}
+
+        {/* Spinner mientras carga el primer frame del thumbnail */}
+        {!consumed && !thumbReady && !thumbFailed && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white/90" />
+          </div>
+        )}
+
         <div className="absolute bottom-1.5 left-2 flex items-center gap-1.5">
           <span className="rounded bg-black/50 px-1.5 py-0.5 text-[11px] text-white">
             ▶ {durationLabel}
