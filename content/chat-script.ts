@@ -119,9 +119,14 @@ export const CHAT_SCRIPT: ChatStep[] = [
   { kind: "text", text: "Cómo se siente en tu cuerpo" },
   // 17
   {
+    kind: "text",
+    text: "Te dejo aquí lo que les recomiendo a mis pacientes",
+  },
+  // 18
+  {
     kind: "link",
-    title: "VELRA — Presión rotatoria constante desde casa",
+    title: "Velra",
     domain: "thevelra.shop",
-    image: ASSETS.foto_producto,
+    image: ASSETS.producto_card,
   },
 ];

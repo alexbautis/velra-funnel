@@ -22,6 +22,8 @@ export const ASSETS = {
   foto_producto: `${SIRV}/foto_producto.png?v=3`,
   landing_bg: `${SIRV}/landing_bg.png?v=3`,
   bg_llamada_entrante: `${SIRV}/bg_llamada_entrante.png?v=3`,
+  // Imagen del producto para la tarjeta del chat (Vercel public/)
+  producto_card: `/AAProduct.png`,
 } as const;
 
 export type AssetKey = keyof typeof ASSETS;

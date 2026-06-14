@@ -306,35 +306,36 @@ export function LinkBubble({
 
   return (
     <BubbleShell first={first} className="w-[80%] p-[3px]">
-      <button onClick={onTap} className="block w-full text-left">
-        <div className="overflow-hidden rounded-xl bg-[#f0f2f5]">
-          {imgFailed ? (
-            <div className="flex aspect-[1.91/1] w-full items-center justify-center bg-gradient-to-br from-teal/30 to-blush/40">
-              <span className="font-bebas text-3xl tracking-[0.3em] text-ink/60">
-                VELRA
-              </span>
-            </div>
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={image}
-              alt=""
-              className="aspect-[1.91/1] w-full object-cover"
-              onError={() => setImgFailed(true)}
-            />
-          )}
-          <div className="px-2.5 py-2">
-            <p className="font-dm text-[14px] font-medium leading-snug text-text-dark">
+      <button
+        onClick={onTap}
+        aria-label={`Abrir ${title}`}
+        className="block w-full overflow-hidden rounded-xl text-left"
+      >
+        {imgFailed ? (
+          <div className="flex aspect-square w-full items-center justify-center bg-gradient-to-br from-teal/30 to-blush/40">
+            <span className="font-bebas text-4xl tracking-[0.3em] text-ink/60">
+              velra
+            </span>
+          </div>
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={image}
+            alt=""
+            className="aspect-square w-full bg-white object-cover"
+            onError={() => setImgFailed(true)}
+          />
+        )}
+        <div className="flex items-end justify-between gap-2 bg-wa-bubble px-3 py-2">
+          <div className="min-w-0">
+            <p className="font-dm text-[15px] font-semibold leading-tight text-text-dark">
               {title}
             </p>
             <p className="mt-0.5 text-[12px] text-gray-500">{domain}</p>
           </div>
-        </div>
-        <div className="px-2 py-1.5">
-          <p className="inline break-all font-dm text-[14px] text-[#53bdeb] underline">
-            https://{domain}
-          </p>
-          <TimeStamp time={time} />
+          <span className="shrink-0 select-none text-[11px] text-gray-400">
+            {time}
+          </span>
         </div>
       </button>
     </BubbleShell>
