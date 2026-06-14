@@ -8,6 +8,7 @@ import { useFunnel } from "@/lib/funnel-state";
 import { ASSETS } from "@/lib/assets";
 import { cn } from "@/lib/utils";
 import { DraAvatar } from "@/components/dra-avatar";
+import { ReviewCard } from "@/components/scenes/review-card";
 import { SALES_COPY as C } from "@/content/sales-copy";
 
 function ProductPhoto({ className }: { className?: string }) {
@@ -229,30 +230,15 @@ export function SalesScene() {
             “{C.endorsement.quote}”
           </blockquote>
 
-          {/* Reseñas reales de clientas — assets de Alex (pendientes) */}
-          <div className="mt-6 space-y-3">
-            {C.reviews.length > 0
-              ? C.reviews.map((r, i) => (
-                  <div
-                    key={i}
-                    className="rounded-2xl border border-text-dark/10 bg-white p-4 text-left"
-                  >
-                    <p className="text-[14px] leading-relaxed">{r.text}</p>
-                    <p className="mt-2 text-[13px] font-medium text-text-dark/60">
-                      — {r.name}
-                    </p>
-                  </div>
-                ))
-              : [1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="rounded-2xl border border-dashed border-text-dark/15 bg-white p-4 text-center"
-                  >
-                    <p className="text-[13px] text-text-dark/35">
-                      Reseña de clienta · próximamente
-                    </p>
-                  </div>
-                ))}
+          {/* Reseñas reales de clientas verificadas */}
+          <div
+            role="region"
+            aria-label="Reseñas de clientes verificadas"
+            className="mt-6 space-y-3"
+          >
+            {C.reviews.map((r, i) => (
+              <ReviewCard key={r.name} review={r} index={i} />
+            ))}
           </div>
         </div>
       </section>

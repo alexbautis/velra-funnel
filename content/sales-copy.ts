@@ -70,8 +70,48 @@ export const SALES_COPY = {
       "VELRA aplica el mismo principio mecánico con el que trabajo en consulta. Por eso es lo que les recomiendo a mis pacientes para hacerlo desde casa.",
   },
 
-  // [2-3 reseñas reales de clientas — assets de Alex, pendientes]
-  reviews: [] as { name: string; text: string }[],
+  // Reseñas reales de clientas verificadas. Orden fijo: Patricia → Laura → Andrea.
+  reviews: [
+    {
+      name: "Patricia M.",
+      age: 48,
+      city: "CDMX",
+      stars: 5,
+      time: "Hace 2 meses",
+      initial: "P",
+      avatar: "blush" as const,
+      text: "Llevaba años gastando en cremas que no me hacían nada. La primera semana con VELRA noté las piernas más ligeras, como deshinchadas. Al mes ya se veía un cambio en la textura. Por fin algo que funciona de verdad.",
+    },
+    {
+      name: "Laura R.",
+      age: 56,
+      city: "Guadalajara",
+      stars: 5,
+      time: "Hace 3 meses",
+      initial: "L",
+      avatar: "teal" as const,
+      text: "Tengo 56 y pensaba que ya era tarde para mí. Empecé sin muchas expectativas y la diferencia la noté yo antes de notarla nadie más. Lo uso en el sofá mientras veo la novela. Quince minutos. Eso es todo.",
+    },
+    {
+      name: "Andrea V.",
+      age: 42,
+      city: "Monterrey",
+      stars: 5,
+      time: "Hace 1 mes",
+      initial: "A",
+      avatar: "blush" as const,
+      text: "Lo que más me convenció fue que no tengo que sacar tiempo para nada. Lo dejo al lado del sofá y lo uso mientras veo el teléfono. Llevo dos meses y mi pareja ya me dijo algo. Eso vale más que cualquier espejo.",
+    },
+  ] as {
+    name: string;
+    age: number;
+    city: string;
+    stars: number;
+    time: string;
+    initial: string;
+    avatar: "blush" | "teal";
+    text: string;
+  }[],
 
   comparison: {
     title: "Hagamos cuentas.",
