@@ -18,14 +18,8 @@ export type Scene = (typeof SCENES)[number];
 const SCENE_KEY = "velra_funnel_scene";
 const UTM_KEY = "velra_funnel_utms";
 
-const SHOPIFY_URL = "https://thevelra.shop/es-mx/products/thevelra";
-
-const FALLBACK_UTMS: Record<string, string> = {
-  utm_source: "facebook",
-  utm_medium: "funnel",
-  utm_campaign: "funnel_v2",
-  utm_term: "directo",
-};
+// PDP destino del paso funnel → producto.
+const PDP_URL = "https://thevelra.shop/velra";
 
 function sceneIndex(scene: Scene): number {
   return SCENES.indexOf(scene);
@@ -63,7 +57,7 @@ interface FunnelContextValue {
   canAccess: (scene: Scene) => boolean;
   /** captura UTMs de la URL actual (se llama en `/`) */
   captureUtms: () => void;
-  /** URL de salida a la product page con UTMs reinyectados */
+  /** URL de salida a la PDP con los UTM (capturados o de la URL actual) + funnel=1 */
   buildExitUrl: () => string;
 }
 
@@ -117,14 +111,22 @@ export function FunnelProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const buildExitUrl = useCallback(() => {
-    const stored = readStoredUtms();
-    const utms = Object.keys(stored).length > 0 ? stored : FALLBACK_UTMS;
-    const url = new URL(SHOPIFY_URL);
-    Object.entries(utms).forEach(([key, value]) => {
+    const url = new URL(PDP_URL);
+    // 1) UTMs capturados en la landing (persisten aunque la URL actual ya no
+    //    los tenga tras navegar entre escenas).
+    Object.entries(readStoredUtms()).forEach(([key, value]) => {
       url.searchParams.set(key, value);
     });
-    // Siempre presente, pisa cualquier utm_content de entrada
-    url.searchParams.set("utm_content", "funnel_velra");
+    // 2) Parámetros de la URL actual (por si se entró directo con UTMs).
+    try {
+      new URLSearchParams(window.location.search).forEach((value, key) => {
+        url.searchParams.set(key, value);
+      });
+    } catch {
+      /* noop */
+    }
+    // 3) Marca del paso por el funnel.
+    url.searchParams.set("funnel", "1");
     return url.toString();
   }, []);
 

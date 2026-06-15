@@ -2,7 +2,9 @@
 
 import Script from "next/script";
 
-const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+// Pixel de VELRA. El env var puede sobreescribirlo, pero por defecto siempre
+// carga este ID para garantizar PageView + eventos en todas las páginas.
+const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "929383266546423";
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID;
 
 /**

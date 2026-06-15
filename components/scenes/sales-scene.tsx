@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronDown, ShieldCheck, Truck } from "lucide-react";
-import { track, trackStandard } from "@/lib/tracking";
+import { track } from "@/lib/tracking";
 import { useFunnel } from "@/lib/funnel-state";
 import { ASSETS } from "@/lib/assets";
 import { cn } from "@/lib/utils";
@@ -74,9 +74,11 @@ export function SalesScene() {
     offerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // CTA del funnel hacia la PDP: evento granular + FunnelToPDP, y redirige a
+  // thevelra.shop/velra con los UTM de Meta + funnel=1.
   const exitToShopify = (event: "sales_cta_oferta" | "sales_cta_final") => {
     track(event);
-    trackStandard("InitiateCheckout", { value: 129.95, currency: "USD" });
+    track("FunnelToPDP");
     window.location.href = buildExitUrl();
   };
 

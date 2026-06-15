@@ -39,10 +39,13 @@ npm run dev
 Variables (`.env.local` y Vercel):
 
 ```
-NEXT_PUBLIC_META_PIXEL_ID=   # Alex
+NEXT_PUBLIC_META_PIXEL_ID=   # opcional: por defecto 929383266546423
 NEXT_PUBLIC_CLARITY_ID=      # Alex
 NEXT_PUBLIC_DISABLE_GUARD=   # "true" solo para QA fuera de dev
 ```
+
+El Meta Pixel (929383266546423) carga en todas las páginas y dispara `PageView`
+automáticamente. El env var solo hace falta para cambiar de Pixel.
 
 ## Deploy
 
@@ -63,13 +66,14 @@ Subir con estos nombres exactos; el funnel ya es navegable con placeholders
 `voz_3_constancia.mp3`, `sfx_tono_llamada.mp3`, `sfx_notif_whatsapp.mp3`,
 `sfx_mensaje_whatsapp.mp3`
 
-## Salida a Shopify
+## Salida a la PDP (funnel → producto)
 
-`https://thevelra.shop/es-mx/products/thevelra` + UTMs capturados en `/`
-(fallback `utm_source=facebook&utm_medium=funnel&utm_campaign=funnel_v2&utm_term=directo`)
-+ siempre `utm_content=funnel_velra`. Misma pestaña. `InitiateCheckout` en cada salida.
+Los CTAs de la Sales Page redirigen a `https://thevelra.shop/velra` con los UTM
+de Meta (capturados en `/` y/o presentes en la URL actual) + `funnel=1`. Misma
+pestaña. Al hacer clic disparan `fbq('trackCustom', 'FunnelToPDP')` (además del
+evento granular `sales_cta_oferta` / `sales_cta_final`).
 
-⚠️ Verificar que la product page muestre ~~$179.95~~ → $129.95 (coherente con la Sales Page).
+⚠️ Verificar que la PDP muestre ~~$179.95~~ → $129.95 (coherente con la Sales Page).
 
 ## Pendientes (no bloquean)
 
