@@ -19,7 +19,30 @@ let silentDataUri: string | null = null;
 let silentEl: HTMLAudioElement | null = null;
 
 let audioCtx: AudioContext | null = null;
-const bufferCache = new Map<string, AudioBuffer | "loading">();
+let keepAliveStarted = false;
+const bufferCache = new Map<string, AudioBuffer>();
+const inflight = new Map<string, Promise<AudioBuffer | null>>();
+
+/** Mantiene el AudioContext "activo" con una fuente silenciosa en loop, para
+ *  que iOS no lo suspenda por inactividad entre el tap de ENTRAR y el tono
+ *  (que suena solo, sin gesto). Una sola vez. */
+function startKeepAlive(ctx: AudioContext) {
+  if (keepAliveStarted) return;
+  try {
+    const buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); // 1s silencio
+    const node = ctx.createBufferSource();
+    node.buffer = buf;
+    node.loop = true;
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    node.connect(gain);
+    gain.connect(ctx.destination);
+    node.start(0);
+    keepAliveStarted = true;
+  } catch {
+    /* noop */
+  }
+}
 
 function getCtx(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -38,15 +61,17 @@ function getCtx(): AudioContext | null {
   return audioCtx;
 }
 
-/** Descarga y decodifica un SFX al caché de buffers (decodificar no
- *  requiere gesto ni contexto corriendo). Reintenta si falló antes. */
-function prefetchSfx(src: string) {
+/** Descarga y decodifica un SFX a un AudioBuffer (no requiere gesto ni
+ *  contexto corriendo). Devuelve el buffer (cacheado) o null si falla.
+ *  Dedupe por src para no decodificar dos veces. */
+function decodeSfx(src: string): Promise<AudioBuffer | null> {
   const ctx = getCtx();
-  if (!ctx) return;
-  const cached = bufferCache.get(src);
-  if (cached === "loading" || (cached && typeof cached !== "string")) return;
-  bufferCache.set(src, "loading");
-  fetch(src)
+  if (!ctx) return Promise.resolve(null);
+  const have = bufferCache.get(src);
+  if (have) return Promise.resolve(have);
+  const pending = inflight.get(src);
+  if (pending) return pending;
+  const p = fetch(src)
     .then((r) => {
       if (!r.ok) throw new Error(String(r.status));
       return r.arrayBuffer();
@@ -54,10 +79,20 @@ function prefetchSfx(src: string) {
     .then((ab) => ctx.decodeAudioData(ab))
     .then((buf) => {
       bufferCache.set(src, buf);
+      inflight.delete(src);
+      return buf;
     })
     .catch(() => {
-      bufferCache.delete(src); // permitir reintento
+      inflight.delete(src); // permitir reintento
+      return null;
     });
+  inflight.set(src, p);
+  return p;
+}
+
+/** Pre-descarga/decodifica (fire-and-forget) para el desbloqueo. */
+function prefetchSfx(src: string) {
+  decodeSfx(src);
 }
 
 /** WAV PCM 8-bit mono 8kHz, 0.1s de silencio (~850 bytes). */
@@ -109,6 +144,7 @@ export function unlockAudioSession(prefetch: string[] = []) {
       node.buffer = silent;
       node.connect(ctx.destination);
       node.start(0);
+      startKeepAlive(ctx); // mantener el contexto vivo hasta el tono
     } catch {
       /* noop */
     }
@@ -131,9 +167,10 @@ export interface SfxHandle {
 }
 
 /**
- * Reproduce un SFX AHORA con una instancia nueva. Nunca lanza.
- * Vía Web Audio si el buffer está decodificado (iOS-proof, no requiere
- * gesto); si no, fallback a `new Audio(src)` instanciado al momento.
+ * Reproduce un SFX. Nunca lanza. Vía Web Audio SIEMPRE que haya AudioContext
+ * (iOS-proof: no requiere gesto si el contexto está vivo): si el buffer ya
+ * está decodificado suena al instante; si no, suena en cuanto decodifica.
+ * Solo si NO hay Web Audio cae a `new Audio(src)` (que en iOS exige gesto).
  */
 export function playSfx(
   src: string,
@@ -142,57 +179,62 @@ export function playSfx(
   if (typeof window === "undefined") return { stop() {} };
 
   const ctx = getCtx();
-  const cached = bufferCache.get(src);
-  if (ctx && cached && typeof cached !== "string") {
-    try {
-      if (ctx.state === "suspended") ctx.resume().catch(() => {});
-      const node = ctx.createBufferSource();
-      node.buffer = cached;
-      node.loop = loop;
-      const gain = ctx.createGain();
-      gain.gain.value = volume;
-      node.connect(gain);
-      gain.connect(ctx.destination);
-      node.start(0);
-      return {
-        stop() {
-          try {
-            gain.gain.value = 0; // silencio inmediato aunque stop() falle
-          } catch {
-            /* noop */
-          }
-          try {
-            node.stop();
-          } catch {
-            /* ya parado */
-          }
-          try {
-            node.disconnect();
-            gain.disconnect();
-          } catch {
-            /* noop */
-          }
-        },
-      };
-    } catch {
-      /* cae al fallback de elemento */
-    }
+  if (ctx) {
+    let stopped = false;
+    let node: AudioBufferSourceNode | null = null;
+    let gain: GainNode | null = null;
+    const startBuffer = (buf: AudioBuffer | null) => {
+      if (stopped || !buf) return;
+      try {
+        if (ctx.state === "suspended") ctx.resume().catch(() => {});
+        node = ctx.createBufferSource();
+        node.buffer = buf;
+        node.loop = loop;
+        gain = ctx.createGain();
+        gain.gain.value = volume;
+        node.connect(gain);
+        gain.connect(ctx.destination);
+        node.start(0);
+      } catch {
+        /* noop */
+      }
+    };
+    const cached = bufferCache.get(src);
+    if (cached) startBuffer(cached);
+    else decodeSfx(src).then(startBuffer); // suena en cuanto decodifica (sin gesto)
+    return {
+      stop() {
+        stopped = true;
+        try {
+          if (gain) gain.gain.value = 0; // silencio inmediato aunque stop() falle
+        } catch {
+          /* noop */
+        }
+        try {
+          if (node) node.stop();
+        } catch {
+          /* ya parado o aún sin arrancar */
+        }
+        try {
+          if (node) node.disconnect();
+          if (gain) gain.disconnect();
+        } catch {
+          /* noop */
+        }
+      },
+    };
   }
 
-  // Buffer aún no listo: dejarlo descargando para la próxima reproducción
-  prefetchSfx(src);
-
+  // Sin Web Audio (navegador muy viejo): fallback a elemento.
   let audio: HTMLAudioElement | null = null;
   let stopped = false;
   try {
     audio = new Audio(src);
     audio.loop = loop;
-    audio.volume = volume; // iOS lo ignora; Android sí lo aplica
+    audio.volume = volume;
     const p = audio.play();
     if (p)
       p.then(() => {
-        // Carrera iOS: si stop() llegó mientras play() estaba pendiente,
-        // la promesa resuelve después y el audio seguiría sonando. Rematar.
         if (stopped && audio) {
           audio.pause();
           audio.src = "";
@@ -204,7 +246,7 @@ export function playSfx(
       };
     }
   } catch {
-    /* asset ausente o autoplay bloqueado: silencio, nunca romper */
+    /* noop */
   }
   return {
     stop() {

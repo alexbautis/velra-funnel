@@ -180,10 +180,20 @@ export function LlamadaScene() {
     };
   }, [state, armIntroWatchdog]);
 
-  // Video intro CON sonido; fallback a muted si el navegador lo bloquea.
+  // Video intro: CON sonido en Android; MUTED en iOS.
+  // En iOS un video con sonido se apropia de la sesión de audio y suspende
+  // el AudioContext del tono de llamada (que suena DESPUÉS, sin gesto, así
+  // que el contexto ya no se puede reactivar). Muteando el intro en iOS, el
+  // contexto desbloqueado en ENTRAR sigue vivo y el tono suena.
   useEffect(() => {
     const v = introVideoRef.current;
     if (!v) return;
+    if (isIosDevice) {
+      v.muted = true;
+      const p = v.play();
+      if (p) p.catch(() => goRinging());
+      return;
+    }
     v.muted = false;
     const p = v.play();
     if (p)
@@ -192,7 +202,7 @@ export function LlamadaScene() {
         const retry = v.play();
         if (retry) retry.catch(() => goRinging());
       });
-  }, [goRinging]);
+  }, [goRinging, isIosDevice]);
 
   // ---- Web Audio API waveform (se inicia dentro del tap handler) ----------
   const setupAnalyser = (audio: HTMLAudioElement) => {
