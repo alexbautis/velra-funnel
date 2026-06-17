@@ -276,7 +276,7 @@ export function ChatScene() {
                 return (
                   <VideoBubble
                     key={index}
-                    src={step.src}
+                    poster={step.poster}
                     durationLabel={step.durationLabel}
                     time={time}
                     first={first}

@@ -22,6 +22,11 @@ export const ASSETS = {
   video_1_fascia: `${VIDEO}/video_1_fascia.mp4`,
   video_2_mecanismo: `${VIDEO}/video_2_mecanismo.mp4`,
   video_3_ugc: `${VIDEO}/video_3_ugc.mp4`,
+  // Pósters (primer frame) de las miniaturas — se ven también en iOS, donde
+  // el <video> no carga frame sin gesto.
+  poster_1_fascia: `${VIDEO}/video_1_fascia.jpg`,
+  poster_2_mecanismo: `${VIDEO}/video_2_mecanismo.jpg`,
+  poster_3_ugc: `${VIDEO}/video_3_ugc.jpg`,
   foto_dra_perfil: `${SIRV}/foto_dra_perfil.png?v=3`,
   foto_producto: `${SIRV}/foto_producto.png?v=3`,
   landing_bg: `${SIRV}/landing_bg.png?v=3`,

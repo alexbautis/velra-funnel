@@ -15,6 +15,7 @@ export type ChatStep =
       kind: "video";
       id: "video1" | "video2" | "video3";
       src: string;
+      poster: string;
       durationLabel: string;
       gate: true;
     }
@@ -52,6 +53,7 @@ export const CHAT_SCRIPT: ChatStep[] = [
     kind: "video",
     id: "video1",
     src: ASSETS.video_1_fascia,
+    poster: ASSETS.poster_1_fascia,
     durationLabel: "1:00",
     gate: true,
   },
@@ -67,6 +69,7 @@ export const CHAT_SCRIPT: ChatStep[] = [
     kind: "video",
     id: "video2",
     src: ASSETS.video_2_mecanismo,
+    poster: ASSETS.poster_2_mecanismo,
     durationLabel: "1:00",
     gate: true,
   },
@@ -84,6 +87,7 @@ export const CHAT_SCRIPT: ChatStep[] = [
     kind: "video",
     id: "video3",
     src: ASSETS.video_3_ugc,
+    poster: ASSETS.poster_3_ugc,
     durationLabel: "0:35",
     gate: true,
   },

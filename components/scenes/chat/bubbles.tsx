@@ -72,14 +72,14 @@ export function TextBubble({
  * icono de play encima. Sin tarjetas de enlace ni títulos sobre la miniatura.
  */
 export function VideoBubble({
-  src,
+  poster,
   durationLabel,
   time,
   onOpen,
   first,
   consumed = false,
 }: {
-  src: string;
+  poster: string;
   durationLabel: string;
   time: string;
   onOpen: () => void;
@@ -118,16 +118,14 @@ export function VideoBubble({
         {thumbFailed ? (
           <div className="aspect-[4/5] w-full bg-gradient-to-br from-[#2b3942] to-[#10181d]" />
         ) : (
-          <video
-            src={src}
+          // Póster (imagen ligera del primer frame): se ve en TODAS las
+          // plataformas, también en iOS donde el <video> no carga frame sin
+          // gesto. El video real solo se monta al tocar (en el overlay).
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={poster}
+            alt=""
             className="aspect-[4/5] w-full bg-black object-cover"
-            // metadata: en Android muestra el primer frame como póster; en iOS
-            // queda en negro (no precarga sin gesto) y se ve el botón de play
-            // encima — aceptable. NO "auto": en iOS el pipeline es ~1 elemento.
-            preload="metadata"
-            muted
-            playsInline
-            disablePictureInPicture
             onContextMenu={(e) => e.preventDefault()}
             onError={() => setThumbFailed(true)}
           />
