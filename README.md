@@ -59,12 +59,15 @@ automáticamente. El env var solo hace falta para cambiar de Pixel.
 Subir con estos nombres exactos; el funnel ya es navegable con placeholders
 (todos los media tienen fallback visual y temporal):
 
-`foto_dra_perfil.jpg`, `foto_producto.jpg`, `landing_bg.jpg`,
-`video_intro_llamada.mp4`, `video_transicion_teclea.mp4`,
-`video_1_fascia.mp4`, `video_2_mecanismo.mp4`, `video_3_ugc.mp4`,
-`audio_llamada.mp3`, `voz_1_edad.mp3`, `voz_2_probetodo.mp3`,
-`voz_3_constancia.mp3`, `sfx_tono_llamada.mp3`, `sfx_notif_whatsapp.mp3`,
-`sfx_mensaje_whatsapp.mp3`
+`foto_dra_perfil.png`, `foto_producto.png`, `landing_bg.png`,
+`bg_llamada_entrante.png`, `video_intro_llamada.mp4`,
+`video_transicion_teclea.mp4`
+
+Los 3 videos del chat (`video_1_fascia`, `video_2_mecanismo`, `video_3_ugc`),
+el audio y `AAProduct.png` se sirven desde `public/` (no Sirv). Los videos del
+chat están optimizados a 720p CRF24 +faststart (~7-9 MB) para que arranquen al
+instante; si los reemplazas, re-encódealos con:
+`ffmpeg -i in.mp4 -vf "scale='min(720,iw)':-2" -c:v libx264 -crf 24 -preset slow -c:a aac -b:a 128k -movflags +faststart out.mp4`
 
 ## Salida a la PDP (funnel → producto)
 

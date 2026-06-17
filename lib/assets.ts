@@ -1,7 +1,10 @@
 // lib/assets.ts
-// Videos e imágenes → Sirv CDN. Audio → /public/audio/ (Sirv no sirve MP3).
+// Imágenes → Sirv CDN. Audio → /public/audio/ (Sirv no sirve MP3).
+// Videos del chat → /public/video/ (optimizados: 720p CRF24 +faststart, ~7-9 MB
+// vs 38-54 MB en Sirv sin faststart; arrancan al instante por streaming).
 const SIRV = "https://claude.sirv.com/velra-funnel";
 const AUDIO = "/audio";
+const VIDEO = "/video";
 
 export const ASSETS = {
   // Audio (Vercel public/)
@@ -12,12 +15,13 @@ export const ASSETS = {
   sfx_tono_llamada: `${AUDIO}/sfx_tono_llamada.mp3`,
   sfx_notif_whatsapp: `${AUDIO}/sfx_notif_whatsapp.mp3`,
   sfx_mensaje_whatsapp: `${AUDIO}/sfx_mensaje_whatsapp.mp3`,
-  // Video e imágenes (Sirv) — subir ?v=N fuerza recarga tras reemplazar archivos
+  // Videos cortos de la llamada (Sirv, ~1 MB, cargan al instante)
   video_intro_llamada: `${SIRV}/video_intro_llamada.mp4?v=3`,
   video_transicion_teclea: `${SIRV}/video_transicion_teclea.mp4?v=3`,
-  video_1_fascia: `${SIRV}/video_1_fascia.mp4?v=3`,
-  video_2_mecanismo: `${SIRV}/video_2_mecanismo.mp4?v=3`,
-  video_3_ugc: `${SIRV}/video_3_ugc.mp4?v=3`,
+  // Videos del chat optimizados (Vercel public/, faststart)
+  video_1_fascia: `${VIDEO}/video_1_fascia.mp4`,
+  video_2_mecanismo: `${VIDEO}/video_2_mecanismo.mp4`,
+  video_3_ugc: `${VIDEO}/video_3_ugc.mp4`,
   foto_dra_perfil: `${SIRV}/foto_dra_perfil.png?v=3`,
   foto_producto: `${SIRV}/foto_producto.png?v=3`,
   landing_bg: `${SIRV}/landing_bg.png?v=3`,

@@ -120,7 +120,10 @@ export function VideoBubble({
           <video
             src={src}
             className="aspect-[4/5] w-full bg-black object-cover"
-            preload="metadata"
+            // preload="auto": al ser clips ligeros con faststart, la miniatura
+            // bufferea el clip mientras la clienta lee; el reproductor (misma
+            // URL) arranca desde caché al tocar.
+            preload="auto"
             muted
             playsInline
             disablePictureInPicture
