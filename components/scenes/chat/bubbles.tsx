@@ -88,11 +88,12 @@ export function VideoBubble({
   consumed?: boolean;
 }) {
   const [thumbFailed, setThumbFailed] = useState(false);
-  const [thumbReady, setThumbReady] = useState(false);
 
-  // Solo clicable cuando el primer frame está listo y no se ha visto aún:
-  // evita doble tap antes de que cargue y la reapertura tras consumirse.
-  const clickable = !consumed && thumbReady;
+  // Clicable en cuanto aparece (no se espera al primer frame: en iOS el
+  // <video preload="metadata"> NO carga sin gesto, así que thumbReady nunca
+  // llegaba y la burbuja quedaba con spinner y deshabilitada). El doble tap
+  // ya lo bloquea videoBusyRef en openVideo.
+  const clickable = !consumed;
 
   return (
     <BubbleShell first={first} className="w-[80%] p-[3px]">
@@ -120,37 +121,24 @@ export function VideoBubble({
           <video
             src={src}
             className="aspect-[4/5] w-full bg-black object-cover"
-            // preload="metadata": solo el primer frame para la miniatura. NO
-            // "auto": en iOS el pipeline de vídeo es ~1 elemento; si la
-            // miniatura bufferea el clip entero, el reproductor (misma URL) se
-            // queda cargando para siempre y no arranca.
+            // metadata: en Android muestra el primer frame como póster; en iOS
+            // queda en negro (no precarga sin gesto) y se ve el botón de play
+            // encima — aceptable. NO "auto": en iOS el pipeline es ~1 elemento.
             preload="metadata"
             muted
             playsInline
             disablePictureInPicture
             onContextMenu={(e) => e.preventDefault()}
-            onLoadedData={() => setThumbReady(true)}
-            onCanPlay={() => setThumbReady(true)}
-            onError={() => {
-              setThumbFailed(true);
-              setThumbReady(true);
-            }}
+            onError={() => setThumbFailed(true)}
           />
         )}
 
-        {/* Botón de play (solo cuando se puede reproducir) */}
+        {/* Botón de play (hasta que el video se consume) */}
         {clickable && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm">
               <Play className="ml-1 h-7 w-7 text-white" fill="currentColor" />
             </span>
-          </div>
-        )}
-
-        {/* Spinner mientras carga el primer frame del thumbnail */}
-        {!consumed && !thumbReady && !thumbFailed && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/25">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white/90" />
           </div>
         )}
 
