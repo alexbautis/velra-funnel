@@ -116,17 +116,20 @@ export const VideoOverlay = forwardRef<
     onEnded();
   };
 
+  // Visibilidad INSTANTÁNEA (sin fade): el play() en el tap exige que el video
+  // ya esté visible; si no, el navegador lo trata como "media en segundo
+  // plano" y lo pausa (Chromium rechaza, iOS se cuelga con spinner).
   return (
-    <AnimatePresence>
-      <motion.div
-        key="overlay"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black"
-        style={{ pointerEvents: open ? "auto" : "none", touchAction: "none" }}
-        initial={false}
-        animate={{ opacity: open ? 1 : 0 }}
-        transition={{ duration: 0.2 }}
-        onContextMenu={(e) => e.preventDefault()}
-      >
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black"
+      style={{
+        opacity: open ? 1 : 0,
+        pointerEvents: open ? "auto" : "none",
+        touchAction: "none",
+        visibility: open ? "visible" : "hidden",
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
         {/* inline-flex => el wrapper se ajusta al video real, así la barra
             queda pegada a su borde inferior y no al del viewport. */}
         <div className="relative inline-flex">
@@ -186,7 +189,6 @@ export const VideoOverlay = forwardRef<
             </div>
           )}
         </div>
-      </motion.div>
-    </AnimatePresence>
+      </div>
   );
 });

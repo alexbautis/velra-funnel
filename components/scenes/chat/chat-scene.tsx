@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
 import {
@@ -183,16 +184,15 @@ export function ChatScene() {
     videoBusyRef.current = true;
     trackOnce(`chat_${id}_play`);
     activeVideoRef.current = { index, id };
-    setOverlayOpen(true);
-    // Arranca CON sonido (el tap es gesto directo; audio ya desbloqueado)
+    // flushSync: pinta el overlay VISIBLE de forma síncrona ANTES del play().
+    // Si el video no está visible al hacer play(), el navegador lo trata como
+    // "media en segundo plano" y lo pausa (Chromium rechaza, iOS se cuelga
+    // con spinner). Con el overlay ya visible, el play() arranca.
+    flushSync(() => setOverlayOpen(true));
+    v.src = src;
     v.muted = false;
     v.volume = 1;
-    // iOS: tras cambiar src hay que load() para que tome la nueva fuente; el
-    // currentTime se resetea solo con el nuevo src (ponerlo antes de cargar
-    // metadata puede colgar la reproducción en iOS).
-    v.src = src;
-    v.load();
-    // play() síncrono dentro del tap (autoplay iOS)
+    // play() síncrono dentro del tap (autoplay iOS), con el video ya visible
     const p = v.play();
     if (p) p.catch(() => finishVideo(true));
     // Si nunca llega a reproducir (red colgada), avanzar para no atrapar.
