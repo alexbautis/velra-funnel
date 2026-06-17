@@ -68,9 +68,11 @@ Subir con estos nombres exactos; el funnel ya es navegable con placeholders
 
 ## Salida a la PDP (funnel → producto)
 
-Los CTAs de la Sales Page redirigen a `https://thevelra.shop/velra` con los UTM
-de Meta (capturados en `/` y/o presentes en la URL actual) + `funnel=1`. Misma
-pestaña. Al hacer clic disparan `fbq('trackCustom', 'FunnelToPDP')` (además del
+Los CTAs de la Sales Page redirigen a `https://thevelra.shop/es-mx/products/thevelra`
+con los UTM de Meta (capturados en `/` y/o presentes en la URL actual) + `funnel=1`.
+Misma pestaña. Se usa la URL `/es-mx/products/...` exacta para que Shopify no
+cuente la venta como orgánica y para evitar el redirect de locale que podría
+perder los parámetros. Al hacer clic disparan `fbq('trackCustom', 'FunnelToPDP')` (además del
 evento granular `sales_cta_oferta` / `sales_cta_final`).
 
 ⚠️ Verificar que la PDP muestre ~~$179.95~~ → $129.95 (coherente con la Sales Page).

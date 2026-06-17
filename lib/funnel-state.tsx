@@ -18,8 +18,10 @@ export type Scene = (typeof SCENES)[number];
 const SCENE_KEY = "velra_funnel_scene";
 const UTM_KEY = "velra_funnel_utms";
 
-// PDP destino del paso funnel → producto.
-const PDP_URL = "https://thevelra.shop/velra";
+// PDP destino del paso funnel → producto. URL exacta /es-mx/products/thevelra
+// para que Shopify atribuya la venta al canal correcto (no como orgánica) y
+// para no provocar el redirect de locale que podría perder los parámetros.
+const PDP_URL = "https://thevelra.shop/es-mx/products/thevelra";
 
 function sceneIndex(scene: Scene): number {
   return SCENES.indexOf(scene);
