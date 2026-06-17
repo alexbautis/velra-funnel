@@ -184,11 +184,14 @@ export function ChatScene() {
     trackOnce(`chat_${id}_play`);
     activeVideoRef.current = { index, id };
     setOverlayOpen(true);
-    v.src = src;
-    v.currentTime = 0;
     // Arranca CON sonido (el tap es gesto directo; audio ya desbloqueado)
     v.muted = false;
     v.volume = 1;
+    // iOS: tras cambiar src hay que load() para que tome la nueva fuente; el
+    // currentTime se resetea solo con el nuevo src (ponerlo antes de cargar
+    // metadata puede colgar la reproducción en iOS).
+    v.src = src;
+    v.load();
     // play() síncrono dentro del tap (autoplay iOS)
     const p = v.play();
     if (p) p.catch(() => finishVideo(true));
